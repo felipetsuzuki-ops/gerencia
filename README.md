@@ -1,1 +1,1 @@
-# gerencia
+# gerenciamento
