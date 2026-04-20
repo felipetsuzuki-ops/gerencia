@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Felipe Lindo">
+<meta name="apple-mobile-web-app-title" content="Assessor">
 <meta name="theme-color" content="#2a5c1f">
-<title>Felipe Lindo</title>
+<title>Assessor</title>
 <link id="pwa-icon" rel="apple-touch-icon">
 
 <style>
@@ -141,14 +141,14 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,'Helvetica Neue'
 
 <div id="splash">
   <div class="spi"><svg width="68" height="68" viewBox="0 0 68 68" fill="none"><text x="34" y="50" text-anchor="middle" font-family="-apple-system,Arial,sans-serif" font-weight="800" font-size="36" fill="white" letter-spacing="-2">FT</text></svg></div>
-  <div class="spt">Felipe Lindo</div>
-  <div class="sps">Graos e Pecuaria</div>
+  <div class="spt">Assessor</div>
+  <div class="sps">Gestao da Fazenda</div>
   <div class="spd"><div class="spdt"></div><div class="spdt"></div><div class="spdt"></div></div>
 </div>
 
 <div id="login-screen">
   <div class="login-logo">FT</div>
-  <div class="login-title">Felipe Lindo</div>
+  <div class="login-title">Assessor</div>
   <div class="login-sub">Faca login para continuar</div>
   <div class="login-form">
     <div class="login-err" id="login-err"></div>
@@ -163,7 +163,7 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,'Helvetica Neue'
 <div id="app">
   <div class="topbar">
     <div class="topbar-left">
-      <div class="tb-title" id="tt">Felipe Lindo <span class="sync-dot" id="sync-dot"></span></div>
+      <div class="tb-title" id="tt">Assessor <span class="sync-dot" id="sync-dot"></span></div>
       <div class="tb-sub" id="ts">Painel geral</div>
     </div>
     <button class="logout-btn" onclick="fazerLogout()">Sair</button>
@@ -270,7 +270,7 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,'Helvetica Neue'
   </div>
 
   <nav class="bnav">
-    <button class="nb active" onclick="navTo('dash',this,'Felipe Lindo','Painel geral')"><span class="ni">📊</span>Painel</button>
+    <button class="nb active" onclick="navTo('dash',this,'Assessor','Painel geral')"><span class="ni">📊</span>Painel</button>
     <button class="nb" onclick="navTo('compras',this,'Compras','Insumos')"><span class="ni">🛒</span>Compras</button>
     <button class="nb" onclick="navTo('estoque',this,'Estoque','Saldo atual')"><span class="ni">📦</span>Estoque</button>
     <button class="nb" onclick="navTo('tarefas',this,'Tarefas','Funcionarios')"><span class="ni">✅</span>Tarefas</button>
@@ -489,7 +489,7 @@ function navTo(id,btn,title,sub){
   document.querySelectorAll('.nb').forEach(function(b){b.classList.remove('active');});
   document.getElementById('pg-'+id).classList.add('active');
   btn.classList.add('active');
-  document.getElementById('tt').innerHTML='Felipe Lindo <span class="sync-dot" id="sync-dot"></span>';
+  document.getElementById('tt').innerHTML='Assessor <span class="sync-dot" id="sync-dot"></span>';
   document.getElementById('ts').textContent=sub;
   document.getElementById('pages').scrollTop=0;
   pag=id;window.pagAtual=id;
@@ -754,27 +754,24 @@ function gerarIcone(){try{var c=document.createElement('canvas');c.width=512;c.h
   // Mostra splash e carrega Firebase so depois que tela pintou
   setTimeout(function(){
     var s=document.getElementById('splash');
-    if(s){s.classList.add('hide');setTimeout(function(){if(s.parentNode)s.parentNode.removeChild(s);},500);}
-  },800);
+    if(s){s.classList.add('hide');setTimeout(function(){if(s.parentNode)s.parentNode.removeChild(s);},400);}
+  },600);
 
-  // Carrega Firebase dinamicamente apos splash
+  // Carrega Firebase so apos usuario ver a tela
   setTimeout(function(){
-    var scripts=[
-      'https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js',
-      'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js',
-      'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js'
-    ];
-    var loaded=0;
-    scripts.forEach(function(src){
+    function loadScript(src, cb){
       var s=document.createElement('script');
-      s.src=src;
-      s.onload=function(){
-        loaded++;
-        if(loaded===scripts.length) initFirebase();
-      };
+      s.src=src; s.onload=cb;
       document.head.appendChild(s);
+    }
+    loadScript('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js', function(){
+      loadScript('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js', function(){
+        loadScript('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js', function(){
+          initFirebase();
+        });
+      });
     });
-  }, 300);
+  }, 1000);
 })();
 
 function initFirebase(){
