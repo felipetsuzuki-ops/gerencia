@@ -193,9 +193,21 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,'Helvetica Neue'
       </div></div>
     </div>
     <div id="pg-compras" class="page">
-      <div class="card">
-        <div class="ch"><span class="ct" id="compras-total">Total: R$ 0,00</span><button class="btn bx bsm" onclick="expXlsx('compras')">Excel</button></div>
-        <div style="padding:0 16px" id="lista-compras"></div>
+      <div class="tg">
+        <button class="tgb active" id="tab-comp" onclick="setTabComp('compras')">Insumos</button>
+        <button class="tgb" id="tab-pec" onclick="setTabComp('pecas')">Pecas e M.O.</button>
+      </div>
+      <div id="sub-compras">
+        <div class="card">
+          <div class="ch"><span class="ct" id="compras-total">Total: R$ 0,00</span><button class="btn bx bsm" onclick="expXlsx('compras')">Excel</button></div>
+          <div style="padding:0 16px" id="lista-compras"></div>
+        </div>
+      </div>
+      <div id="sub-pecas" style="display:none">
+        <div class="card">
+          <div class="ch"><span class="ct" id="pecas-total">Total: R$ 0,00</span><button class="btn bx bsm" onclick="expXlsx('pecas')">Excel</button></div>
+          <div style="padding:0 16px" id="lista-pecas"></div>
+        </div>
       </div>
     </div>
     <div id="pg-estoque" class="page">
@@ -223,12 +235,7 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,'Helvetica Neue'
       </div>
       <div id="vista-tarefas"></div>
     </div>
-    <div id="pg-pecas" class="page">
-      <div class="card">
-        <div class="ch"><span class="ct" id="pecas-total">Total: R$ 0,00</span><button class="btn bx bsm" onclick="expXlsx('pecas')">Excel</button></div>
-        <div style="padding:0 16px" id="lista-pecas"></div>
-      </div>
-    </div>
+
     <div id="pg-pecuaria" class="page">
       <div class="sg" id="pec-grid"></div>
       <div class="card">
@@ -271,7 +278,7 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,'Helvetica Neue'
     <button class="nb" onclick="navTo('compras',this,'Compras','Insumos')"><span class="ni">🛒</span>Compras</button>
     <button class="nb" onclick="navTo('estoque',this,'Estoque','Saldo atual')"><span class="ni">📦</span>Estoque</button>
     <button class="nb" onclick="navTo('tarefas',this,'Tarefas','Funcionarios')"><span class="ni">✅</span>Tarefas</button>
-    <button class="nb" onclick="navTo('pecas',this,'Pecas e M.O.','Maquinas')"><span class="ni">🔧</span>Pecas</button>
+
     <button class="nb" onclick="navTo('pecuaria',this,'Pecuaria','Rebanho')"><span class="ni">🐄</span>Pecuaria</button>
     <button class="nb" onclick="navTo('rel',this,'Relatorios','Analise')"><span class="ni">📈</span>Relat.</button>
   </nav>
@@ -582,29 +589,41 @@ function navTo(id,btn,title,sub){
 }
 function renderPag(id){
   if(id==='dash'){renderDash();renderChuva();}
-  if(id==='compras')renderCompras();
+  if(id==='compras'){renderCompras();renderPecas();}
   if(id==='estoque'){renderEst();populaSelIns();}
   if(id==='tarefas'){populaSelFunc();renderTarefas();}
-  if(id==='pecas')renderPecas();
+
   if(id==='pecuaria')renderPecuaria();
   if(id==='rel')renderRel();
 }
 function abreM(id){document.getElementById(id).classList.add('open');}
 function fechaM(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.mo').forEach(function(m){m.addEventListener('click',function(e){if(e.target===m)fechaM(m.id);});});
+function setTabComp(tab){
+  document.getElementById('tab-comp').classList.toggle('active',tab==='compras');
+  document.getElementById('tab-pec').classList.toggle('active',tab==='pecas');
+  document.getElementById('sub-compras').style.display=tab==='compras'?'block':'none';
+  document.getElementById('sub-pecas').style.display=tab==='pecas'?'block':'none';
+}
+
 function abrirFab(){
-  if(pag==='dash'||pag==='compras')abreM('m-compra');
+  if(pag==='dash')abreM('m-compra');
+  else if(pag==='compras'){
+    var tabAtiva=document.getElementById('tab-pec').classList.contains('active');
+    if(tabAtiva)abreM('m-peca'); else abreM('m-compra');
+  }
   else if(pag==='tarefas')abrirNovaTarefa();
-  else if(pag==='pecas')abreM('m-peca');
+
   else if(pag==='pecuaria')abreM('m-pecuaria');
 }
 
 function renderDash(){
   var mes=new Date().toISOString().slice(0,7);
   var cm=appDB.compras.filter(function(c){return c.data&&c.data.startsWith(mes);});
-  var totC=cm.reduce(function(s,c){return s+c.qtd*c.val;},0);
-  var totP=appDB.pecas.filter(function(p){return p.data&&p.data.startsWith(mes);}).reduce(function(s,p){return s+(Number(p.val)||0);},0);
-  var est=estoque(),baixos=est.filter(function(e){return e.min>0&&e.saldo<=e.min;});
+  var totP=appDB.pecas.filter(function(p){return p.data&&p.data.startsWith(mes);}).reduce(function(s,p){return s+parseFloat(p.val||0);},0);
+  var catLavoura=['Semente','Fertilizante'];
+  var totLavoura=cm.filter(function(c){return catLavoura.indexOf(c.cat)>=0;}).reduce(function(s,c){return s+c.qtd*c.val;},0);
+  var totC=cm.filter(function(c){return catLavoura.indexOf(c.cat)<0;}).reduce(function(s,c){return s+c.qtd*c.val;},0);
   var pend=appDB.tarefas.filter(function(t){return t.stat==='Pendente';}).length;
   var ult=appDB.pecuaria.filter(function(p){return p.tipo==='contagem';}).slice(-1)[0];
   var reb=ult?(Number(ult.vacas||0)+Number(ult.bezerros||0)+Number(ult.touros||0)):0;
@@ -613,7 +632,7 @@ function renderDash(){
     '<div class="st t"><div class="sl">Gasto insumos</div><div class="sv" style="font-size:15px">'+fmtR(totC)+'</div><div class="ss">'+cm.length+' compra(s)</div></div>'+
     '<div class="st p"><div class="sl">Pecas e M.O.</div><div class="sv" style="font-size:15px">'+fmtR(totP)+'</div></div>'+
     '<div class="st y"><div class="sl">Tarefas pend.</div><div class="sv">'+pend+'</div><div class="ss"><span style="text-decoration:underline;cursor:pointer" onclick="abreM(\'m-func\');renderListaFuncs()">funcionarios</span></div></div>'+
-    '<div class="st r"><div class="sl">Estoque baixo</div><div class="sv">'+baixos.length+'</div><div class="ss">insumo(s)</div></div>'+
+
     '<div class="st b"><div class="sl">Rebanho</div><div class="sv">'+reb+'</div><div class="ss">animais</div></div>'+
     '<div class="st g"><div class="sl">Nascimentos</div><div class="sv">'+nasc+'</div><div class="ss">este mes</div></div>';
   var tp=appDB.tarefas.filter(function(t){return t.stat==='Pendente';}).slice(0,5);
@@ -651,7 +670,9 @@ function salvarChuva(){var data=document.getElementById('ch-data').value,mm=pars
 function renderChuva(){var chuvas=appDB.chuvas||[];var mes=new Date().toISOString().slice(0,7);var totalMes=chuvas.filter(function(c){return c.data&&c.data.startsWith(mes);}).reduce(function(s,c){return s+Number(c.mm||0);},0);var elT=document.getElementById('chuva-total-mes');if(elT)elT.textContent=totalMes.toFixed(1)+' mm';var h=hoje(),dias=[];for(var i=14;i>=0;i--){var d=new Date();d.setDate(d.getDate()-i);var ds=d.toISOString().split('T')[0];var mm=chuvas.filter(function(c){return c.data===ds;}).reduce(function(s,c){return s+Number(c.mm||0);},0);dias.push({data:ds,mm:mm,dia:ds.split('-')[2]});}var maxMM=Math.max.apply(null,dias.map(function(d){return d.mm;}));if(maxMM===0)maxMM=1;var elG=document.getElementById('chuva-grafico');if(elG){elG.innerHTML=dias.map(function(d){var ht=Math.max(3,Math.round((d.mm/maxMM)*60));var cor=d.mm===0?'var(--br)':'var(--b)';var op=d.mm===0?'0.4':'1';return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px"><div style="font-size:8px;color:var(--tx3);font-weight:600;min-height:12px">'+(d.mm>0?d.mm.toFixed(0):'')+' </div><div style="width:100%;background:'+cor+';border-radius:3px 3px 0 0;height:'+ht+'px;opacity:'+op+'"></div><div style="font-size:8px;color:var(--tx3)">'+(d.data===h?'hj':d.dia)+'</div></div>';}).join('');}var lista=chuvas.slice().sort(function(a,b){return (b.data||'').localeCompare(a.data||'');}).slice(0,5);var elL=document.getElementById('chuva-lista');if(elL){elL.innerHTML=lista.length?lista.map(function(c){return '<div class="lrow" style="padding:8px 0"><div class="lm"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:20px">🌧️</span><div><div style="font-size:14px;font-weight:700;color:var(--b)">'+Number(c.mm).toFixed(1)+' mm</div><div style="font-size:12px;color:var(--tx2)">'+fmtD(c.data)+(c.obs?' - '+c.obs:'')+'</div></div></div></div><button class="bdel" onclick="deletarFS(\'chuvas\','+c.id+')">Excluir</button></div>';}).join(''):'<div style="text-align:center;color:var(--tx3);font-size:13px;padding:10px 0">Nenhum registro ainda</div>';}}
 
 function filtPer(lista,campo){var de=document.getElementById('r-de').value,ate=document.getElementById('r-ate').value;return lista.filter(function(i){if(de&&i[campo]<de)return false;if(ate&&i[campo]>ate)return false;return true;});}
-function renderRel(){var comp=filtPer(appDB.compras,'data'),tar=filtPer(appDB.tarefas,'data');var pCat={},pForn={},pSafra={};comp.forEach(function(c){pCat[c.cat]=(pCat[c.cat]||0)+c.qtd*c.val;var f=c.forn||'Sem fornecedor';pForn[f]=(pForn[f]||0)+c.qtd*c.val;var sk=(c.safra||'Sem safra')+' - '+(c.cultura||'Sem cultura');pSafra[sk]=(pSafra[sk]||0)+c.qtd*c.val;});function toRows(obj){var e=Object.entries(obj).sort(function(a,b){return b[1]-a[1];});return e.length?e.map(function(e){return '<div class="lrow"><span class="ltit">'+e[0]+'</span><span class="lv">'+fmtR(e[1])+'</span></div>';}).join(''):'<div class="empty" style="padding:14px">Sem dados</div>';}document.getElementById('rel-cat').innerHTML=toRows(pCat);document.getElementById('rel-forn').innerHTML=toRows(pForn);document.getElementById('rel-safra').innerHTML=toRows(pSafra);document.getElementById('rel-func').innerHTML=appDB.funcs.map(function(f){var ft=tar.filter(function(t){return t.fid===f.id;});var conc=ft.filter(function(t){return t.stat==='Concluida';}).length;return '<div class="lrow"><div class="lm"><div class="ltit">'+f.nome+'</div><div class="lsub">'+ft.length+' tarefa(s) - '+conc+' concluida(s)</div></div><div class="lv">'+conc+'</div></div>';}).join('')||'<div class="empty" style="padding:14px">Sem dados</div>';}
+function renderRel(){var comp=filtPer(appDB.compras,'data'),tar=filtPer(appDB.tarefas,'data'),pecs=filtPer(appDB.pecas,'data');var pCat={},pForn={},pSafra={};
+  comp.forEach(function(c){pCat[c.cat]=(pCat[c.cat]||0)+c.qtd*c.val;var f=c.forn||'Sem fornecedor';pForn[f]=(pForn[f]||0)+c.qtd*c.val;var sk=(c.safra||'Sem safra')+' - '+(c.cultura||'Sem cultura');pSafra[sk]=(pSafra[sk]||0)+c.qtd*c.val;});
+  pecs.forEach(function(p){var v=Number(p.val)||0;var cat=p.tipo||'Peca de reposicao';pCat[cat]=(pCat[cat]||0)+v;var f=p.forn||'Sem fornecedor';pForn[f]=(pForn[f]||0)+v;});function toRows(obj){var e=Object.entries(obj).sort(function(a,b){return b[1]-a[1];});return e.length?e.map(function(e){return '<div class="lrow"><span class="ltit">'+e[0]+'</span><span class="lv">'+fmtR(e[1])+'</span></div>';}).join(''):'<div class="empty" style="padding:14px">Sem dados</div>';}document.getElementById('rel-cat').innerHTML=toRows(pCat);document.getElementById('rel-forn').innerHTML=toRows(pForn);document.getElementById('rel-safra').innerHTML=toRows(pSafra);document.getElementById('rel-func').innerHTML=appDB.funcs.map(function(f){var ft=tar.filter(function(t){return t.fid===f.id;});var conc=ft.filter(function(t){return t.stat==='Concluida';}).length;return '<div class="lrow"><div class="lm"><div class="ltit">'+f.nome+'</div><div class="lsub">'+ft.length+' tarefa(s) - '+conc+' concluida(s)</div></div><div class="lv">'+conc+'</div></div>';}).join('')||'<div class="empty" style="padding:14px">Sem dados</div>';}
 
 function expXlsx(tipo){var wb=XLSX.utils.book_new();if(tipo==='compras'){XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(appDB.compras.map(function(c){return {'Data':fmtD(c.data),'Safra':c.safra||'','Cultura':c.cultura||'','Insumo':c.nome,'Categoria':c.cat,'Qtd':c.qtd,'Unid':c.un,'Valor Unit':c.val,'Total':parseFloat((c.qtd*c.val).toFixed(2)),'Fornecedor':c.forn};})),'Compras');XLSX.writeFile(wb,'compras.xlsx');}else if(tipo==='pecas'){XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(appDB.pecas.map(function(p){return {'Data':fmtD(p.data),'Tipo':p.tipo,'Descricao':p.desc,'Maquina':p.maq,'Valor':p.val,'Fornecedor':p.forn};})),'Pecas e MO');XLSX.writeFile(wb,'pecas_mo.xlsx');}else if(tipo==='pecuaria'){XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(appDB.pecuaria.map(function(p){return {'Data':fmtD(p.data),'Tipo':p.tipo,'ID':p.idAnimal||'','Sexo':p.sexo||'','Raca':p.raca||'','Mae':p.mae||'','Vacas':p.vacas||'','Bezerros':p.bezerros||'','Touros':p.touros||'','Obs':p.obs};})),'Pecuaria');XLSX.writeFile(wb,'pecuaria.xlsx');}}
 function expRelatorio(){
