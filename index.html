@@ -178,7 +178,10 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,'Helvetica Neue'
       <div class="card"><div class="cb" id="dash-tarefas"></div></div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:18px;margin-bottom:10px">
         <div class="sec" style="margin:0">Chuvas</div>
-        <button onclick="abreM('m-chuva')" style="background:var(--bl);color:var(--b);border:none;font-size:12px;font-weight:700;padding:7px 14px;border-radius:20px;cursor:pointer">+ Registrar</button>
+        <div style="display:flex;gap:8px">
+          <button onclick="abrirHistChuva()" style="background:var(--bg);color:var(--b);border:1.5px solid var(--b);font-size:12px;font-weight:700;padding:7px 14px;border-radius:20px;cursor:pointer">Historico</button>
+          <button onclick="abreM('m-chuva')" style="background:var(--bl);color:var(--b);border:none;font-size:12px;font-weight:700;padding:7px 14px;border-radius:20px;cursor:pointer">+ Registrar</button>
+        </div>
       </div>
       <div class="card"><div style="padding:14px 16px 10px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -445,6 +448,23 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,'Helvetica Neue'
   <button class="btn bb2" onclick="salvarChuva()">Salvar registro</button>
 </div></div>
 
+<!-- MODAL HISTORICO CHUVAS -->
+<div class="mo" id="m-hist-chuva"><div class="ms">
+  <div class="mh" onclick="fechaM('m-hist-chuva')"></div>
+  <div class="mtit">Historico de chuvas</div>
+  <div class="fr" style="margin-bottom:14px">
+    <div class="fg" style="margin:0"><label class="fl">Mes</label><div class="sw"><select class="fsel" id="hist-mes" onchange="renderHistChuva()" style="font-size:13px;padding:10px 12px"></select></div></div>
+    <div class="fg" style="margin:0;justify-content:flex-end;align-items:flex-end">
+      <div style="background:var(--bl);color:var(--b);border-radius:12px;padding:12px;text-align:center">
+        <div style="font-size:11px;font-weight:600;color:var(--tx2);text-transform:uppercase;margin-bottom:4px">Total do mes</div>
+        <div style="font-size:22px;font-weight:800" id="hist-total-mes">0 mm</div>
+      </div>
+    </div>
+  </div>
+  <div id="hist-grafico" style="display:flex;align-items:flex-end;gap:3px;height:80px;margin-bottom:14px"></div>
+  <div id="hist-lista"></div>
+</div></div>
+
 <script>
 // Firebase - igual a versao que funcionava
 firebase.initializeApp({
@@ -685,6 +705,79 @@ async function analisarFotoNFPeca(dataUrl,mimeType){var apiKey=document.getEleme
 function statusNFPeca(msg,erro){var el=document.getElementById('nf-stat-peca');el.textContent=(erro?'Erro: ':'')+msg;el.className='nfst '+(erro?'nfer':'nfok');el.style.display='block';}
 function mostrarResultadoNFPeca(json){document.getElementById('nf-stat-peca').style.display='none';var itens=json.itens||[];var linhas=[['Fornecedor',json.fornecedor||'--'],['Data',json.data?fmtD(json.data):'--']];if(json.nNF)linhas.push(['NF',json.nNF]);linhas.push(['Total',json.total?fmtR(json.total):'--'],['Itens',itens.length+' item(ns)']);itens.forEach(function(it,i){linhas.push(['Item '+(i+1),(it.nome||'?')+' - '+fmtR(it.val)]);});document.getElementById('nf-items-peca').innerHTML=linhas.map(function(l){return '<div class="nfrw"><span class="nfrl">'+l[0]+'</span><span class="nfrv">'+l[1]+'</span></div>';}).join('');document.getElementById('nf-res-peca').style.display='block';document.getElementById('nf-confirmar-peca').style.display='flex';}
 function confirmarNFPeca(){if(!nfDadosPeca)return;var itens=nfDadosPeca.itens||[];if(!itens.length){alert('Nenhum item.');return;}itens.forEach(function(it){salvarFS('pecas',{id:nid(),data:nfDadosPeca.data||hoje(),tipo:'Peca de reposicao',desc:it.nome||'Item',maq:'',val:Number(it.val)||0,forn:nfDadosPeca.fornecedor||'',obs:'NF'+(nfDadosPeca.nNF?' n.'+nfDadosPeca.nNF:'')});});fechaM('m-nf-peca');limparNFPeca();setTimeout(function(){alert('item(ns) adicionado(s)!');},300);}
+
+function abrirHistChuva(){
+  // Populate month selector with all months that have data + last 6 months
+  var sel=document.getElementById('hist-mes');
+  var meses={};
+  (appDB.chuvas||[]).forEach(function(c){if(c.data)meses[c.data.slice(0,7)]=true;});
+  // Add last 6 months even if no data
+  for(var i=0;i<6;i++){
+    var d=new Date();d.setMonth(d.getMonth()-i);
+    var m=d.toISOString().slice(0,7);
+    meses[m]=true;
+  }
+  var sorted=Object.keys(meses).sort().reverse();
+  var hoje_=new Date().toISOString().slice(0,7);
+  sel.innerHTML=sorted.map(function(m){
+    var parts=m.split('-');
+    var nomes=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    var label=nomes[parseInt(parts[1])-1]+'/'+parts[0];
+    return '<option value="'+m+'"'+(m===hoje_?' selected':'')+'>'+label+'</option>';
+  }).join('');
+  renderHistChuva();
+  abreM('m-hist-chuva');
+}
+
+function renderHistChuva(){
+  var mes=document.getElementById('hist-mes').value;
+  if(!mes)return;
+  var chuvas=(appDB.chuvas||[]).filter(function(c){return c.data&&c.data.startsWith(mes);});
+  var total=chuvas.reduce(function(s,c){return s+Number(c.mm||0);},0);
+  document.getElementById('hist-total-mes').textContent=total.toFixed(1)+' mm';
+
+  // Get all days in month
+  var parts=mes.split('-');
+  var ano=parseInt(parts[0]),mo=parseInt(parts[1]);
+  var diasNoMes=new Date(ano,mo,0).getDate();
+  var dias=[];
+  for(var i=1;i<=diasNoMes;i++){
+    var ds=mes+'-'+(i<10?'0':'')+i;
+    var mm=chuvas.filter(function(c){return c.data===ds;}).reduce(function(s,c){return s+Number(c.mm||0);},0);
+    dias.push({data:ds,mm:mm,dia:i});
+  }
+  var maxMM=Math.max.apply(null,dias.map(function(d){return d.mm;}));
+  if(maxMM===0)maxMM=1;
+
+  // Grafico
+  var elG=document.getElementById('hist-grafico');
+  elG.innerHTML=dias.map(function(d){
+    var ht=Math.max(2,Math.round((d.mm/maxMM)*70));
+    var cor=d.mm===0?'var(--br)':'var(--b)';
+    var op=d.mm===0?'0.3':'1';
+    return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">'+
+      '<div style="font-size:7px;color:var(--tx3);min-height:10px">'+(d.mm>0?d.mm.toFixed(0):'')+'</div>'+
+      '<div style="width:100%;background:'+cor+';border-radius:2px 2px 0 0;height:'+ht+'px;opacity:'+op+'"></div>'+
+      '<div style="font-size:7px;color:var(--tx3)">'+(d.dia%5===0||d.dia===1?d.dia:'')+'</div>'+
+    '</div>';
+  }).join('');
+
+  // Lista
+  var lista=chuvas.slice().sort(function(a,b){return (b.data||'').localeCompare(a.data||'');});
+  document.getElementById('hist-lista').innerHTML=lista.length?
+    '<div style="font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Registros ('+lista.length+')</div>'+
+    lista.map(function(c){
+      return '<div class="lrow" style="padding:8px 0">'+
+        '<div class="lm"><div style="display:flex;align-items:center;gap:8px">'+
+          '<span style="font-size:18px">🌧️</span>'+
+          '<div><div style="font-size:14px;font-weight:700;color:var(--b)">'+Number(c.mm).toFixed(1)+' mm</div>'+
+          '<div style="font-size:12px;color:var(--tx2)">'+fmtD(c.data)+(c.obs?' - '+c.obs:'')+'</div></div>'+
+        '</div></div>'+
+        '<button class="bdel" onclick="deletarFS('chuvas','+c.id+');setTimeout(renderHistChuva,500);renderChuva();">Excluir</button>'+
+      '</div>';
+    }).join('')
+    :'<div class="empty" style="padding:20px"><div class="ei">☀️</div>Nenhum registro neste mes</div>';
+}
 
 function gerarIcone(){try{var c=document.createElement('canvas');c.width=512;c.height=512;var ctx=c.getContext('2d');var r=100;ctx.beginPath();ctx.moveTo(r,0);ctx.lineTo(512-r,0);ctx.quadraticCurveTo(512,0,512,r);ctx.lineTo(512,512-r);ctx.quadraticCurveTo(512,512,512-r,512);ctx.lineTo(r,512);ctx.quadraticCurveTo(0,512,0,512-r);ctx.lineTo(0,r);ctx.quadraticCurveTo(0,0,r,0);ctx.closePath();var g=ctx.createLinearGradient(0,0,512,512);g.addColorStop(0,'#3d8530');g.addColorStop(1,'#1a4015');ctx.fillStyle=g;ctx.fill();ctx.beginPath();ctx.arc(256,256,200,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,0.08)';ctx.fill();ctx.fillStyle='#ffffff';ctx.font='800 230px -apple-system,Arial,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('FT',256,270);ctx.fillStyle='rgba(255,255,255,0.25)';ctx.fillRect(106,390,300,7);var lnk=document.getElementById('pwa-icon');if(lnk)lnk.href=c.toDataURL('image/png');}catch(e){}}
 
