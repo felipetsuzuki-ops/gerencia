@@ -779,7 +779,7 @@ function renderHistChuva(){
           '<div><div style="font-size:14px;font-weight:700;color:var(--b)">'+Number(c.mm).toFixed(1)+' mm</div>'+
           '<div style="font-size:12px;color:var(--tx2)">'+fmtD(c.data)+(c.obs?' - '+c.obs:'')+'</div></div>'+
         '</div></div>'+
-        '<button class="bdel" onclick="deletarFS('chuvas','+c.id+');setTimeout(renderHistChuva,500);renderChuva();">Excluir</button>'+
+        '<button class="bdel" onclick="delChuvaHist('+c.id+')">Excluir</button>'+
       '</div>';
     }).join('')
     :'<div class="empty" style="padding:20px"><div class="ei">☀️</div>Nenhum registro neste mes</div>';
