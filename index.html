@@ -243,6 +243,11 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,'Helvetica Neue'
         <div style="padding:0 16px" id="lista-pecuaria"></div>
       </div>
     </div>
+    <div id="pg-manut" class="page">
+      <div id="manut-alertas"></div>
+      <div class="card"><div style="padding:0 16px" id="lista-manut"></div></div>
+    </div>
+
     <div id="pg-rel" class="page">
       <div class="card"><div class="cb">
         <div class="fr" style="margin-bottom:10px">
@@ -280,6 +285,7 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,'Helvetica Neue'
     <button class="nb" onclick="navTo('tarefas',this,'Tarefas','Funcionarios')"><span class="ni">✅</span>Tarefas</button>
 
     <button class="nb" onclick="navTo('pecuaria',this,'Pecuaria','Rebanho')"><span class="ni">🐄</span>Pecuaria</button>
+    <button class="nb" onclick="navTo('manut',this,'Manutencoes','Maquinas')"><span class="ni">🔩</span>Manut.</button>
     <button class="nb" onclick="navTo('rel',this,'Relatorios','Analise')"><span class="ni">📈</span>Relat.</button>
   </nav>
 </div>
@@ -455,6 +461,28 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,'Helvetica Neue'
   <button class="btn bb2" onclick="salvarPecuaria()">Salvar registro</button>
 </div></div>
 
+<!-- MODAL MANUTENCAO -->
+<div class="mo" id="m-manut"><div class="ms">
+  <div class="mh" onclick="fechaM('m-manut')"></div>
+  <div class="mtit" id="m-manut-titulo">Nova manutencao</div>
+  <input type="hidden" id="mn-edit-id" value="">
+  <div class="fr" style="margin-bottom:10px">
+    <div class="fg" style="margin:0"><label class="fl">Maquina</label><input type="text" class="fi" id="mn-maq" placeholder="Ex: Trator John Deere..."></div>
+    <div class="fg" style="margin:0"><label class="fl">Tipo</label><div class="sw"><select class="fsel" id="mn-tipo"><option>Troca de oleo</option><option>Filtro de ar</option><option>Filtro de combustivel</option><option>Correia</option><option>Pneu</option><option>Revisao geral</option><option>Lubrificacao</option><option>Freios</option><option>Bateria</option><option>Outro</option></select></div></div>
+  </div>
+  <div class="fr" style="margin-bottom:10px">
+    <div class="fg" style="margin:0"><label class="fl">Data realizada</label><input type="date" class="fi" id="mn-data"></div>
+    <div class="fg" style="margin:0"><label class="fl">Proxima em</label><input type="date" class="fi" id="mn-prox"></div>
+  </div>
+  <div class="fr" style="margin-bottom:10px">
+    <div class="fg" style="margin:0"><label class="fl">Horimetro / Km</label><input type="number" class="fi" id="mn-hora" placeholder="Ex: 1250 h" min="0" inputmode="decimal"></div>
+    <div class="fg" style="margin:0"><label class="fl">Custo R$</label><input type="number" class="fi" id="mn-custo" placeholder="0,00" min="0" step="0.01" inputmode="decimal"></div>
+  </div>
+  <div class="fg"><label class="fl">Descricao / Pecas usadas</label><textarea class="fta" id="mn-desc" placeholder="Descreva o servico realizado..." style="min-height:70px"></textarea></div>
+  <div class="fg"><label class="fl">Lembrete</label><div class="sw"><select class="fsel" id="mn-lembrete"><option value="">Sem lembrete</option><option value="7">7 dias antes</option><option value="15">15 dias antes</option><option value="30">30 dias antes</option></select></div></div>
+  <button class="btn bg" id="mn-btn-salvar" onclick="salvarManut()">Registrar manutencao</button>
+</div></div>
+
 <!-- MODAL CHUVA -->
 <div class="mo" id="m-chuva"><div class="ms">
   <div class="mh" onclick="fechaM('m-chuva')"></div>
@@ -516,7 +544,7 @@ firebase.auth().onAuthStateChanged(function(user){
 function iniciarSync(uid){
   syncDot('syncing');
   unsubs.forEach(function(u){u();});unsubs=[];
-  var cols=['compras','usos','tarefas','funcs','pecas','pecuaria','chuvas'],ok={};
+  var cols=['compras','usos','tarefas','funcs','pecas','pecuaria','chuvas','manutencoes'],ok={};
   cols.forEach(function(col){
     var u=db.collection('usuarios').doc(uid).collection(col).onSnapshot(function(snap){
       appDB[col]=[];snap.forEach(function(d){appDB[col].push(d.data());});
@@ -566,7 +594,7 @@ window.criarConta=function(){
 window.fazerLogout=function(){if(confirm('Deseja sair?'))auth.signOut();};
 
 // App
-var appDB={compras:[],usos:[],tarefas:[],funcs:[],pecas:[],pecuaria:[],chuvas:[]};
+var appDB={compras:[],usos:[],tarefas:[],funcs:[],pecas:[],pecuaria:[],chuvas:[],manutencoes:[]};
 window.pagAtual='dash';
 function nid(){return Date.now()+Math.floor(Math.random()*10000);}
 function hoje(){return new Date().toISOString().split('T')[0];}
@@ -584,7 +612,7 @@ function navTo(id,btn,title,sub){
   document.getElementById('ts').textContent=sub;
   document.getElementById('pages').scrollTop=0;
   pag=id;window.pagAtual=id;
-  document.getElementById('fab').style.display=['dash','compras','tarefas','pecas','pecuaria'].indexOf(id)>=0?'flex':'none';
+  document.getElementById('fab').style.display=['dash','compras','tarefas','pecas','pecuaria','manut'].indexOf(id)>=0?'flex':'none';
   renderPag(id);
 }
 function renderPag(id){
@@ -594,6 +622,7 @@ function renderPag(id){
   if(id==='tarefas'){populaSelFunc();renderTarefas();}
 
   if(id==='pecuaria')renderPecuaria();
+  if(id==='manut')renderManut();
   if(id==='rel')renderRel();
 }
 function abreM(id){document.getElementById(id).classList.add('open');}
@@ -613,18 +642,20 @@ function abrirFab(){
     if(tabAtiva)abreM('m-peca'); else abreM('m-compra');
   }
   else if(pag==='tarefas')abrirNovaTarefa();
+  else if(pag==='manut')abreM('m-manut');
 
   else if(pag==='pecuaria')abreM('m-pecuaria');
 }
 
 function renderDash(){
   var mes=new Date().toISOString().slice(0,7);
-  var cm=appDB.compras.filter(function(c){return c.data&&c.data.startsWith(mes);});
-  var totP=appDB.pecas.filter(function(p){return p.data&&p.data.startsWith(mes);}).reduce(function(s,p){return s+parseFloat(p.val||0);},0);
-  var catLavoura=['Semente','Fertilizante'];
-  var totLavoura=cm.filter(function(c){return catLavoura.indexOf(c.cat)>=0;}).reduce(function(s,c){return s+c.qtd*c.val;},0);
-  var totC=cm.filter(function(c){return catLavoura.indexOf(c.cat)<0;}).reduce(function(s,c){return s+c.qtd*c.val;},0);
+
   var pend=appDB.tarefas.filter(function(t){return t.stat==='Pendente';}).length;
+  var hoje_=hoje();
+  var em30=new Date();em30.setDate(em30.getDate()+30);var em30s=em30.toISOString().split('T')[0];
+  var manutVenc=(appDB.manutencoes||[]).filter(function(m){return m.proxData&&m.proxData<hoje_&&m.status!=='Concluida';}).length;
+  var manutProx=(appDB.manutencoes||[]).filter(function(m){return m.proxData&&m.proxData>=hoje_&&m.proxData<=em30s&&m.status!=='Concluida';}).length;
+  var chuvasMes=(appDB.chuvas||[]).filter(function(c){return c.data&&c.data.startsWith(mes);}).reduce(function(s,c){return s+Number(c.mm||0);},0);
   var ult=appDB.pecuaria.filter(function(p){return p.tipo==='contagem';}).slice(-1)[0];
   var reb=ult?(Number(ult.vacas||0)+Number(ult.bezerros||0)+Number(ult.touros||0)):0;
   var nasc=appDB.pecuaria.filter(function(p){return p.tipo==='nascimento'&&p.data&&p.data.startsWith(mes);}).length;
@@ -656,7 +687,7 @@ function editarTarefa(id){var t=appDB.tarefas.filter(function(t){return String(t
 function salvarTarefa(){var editId=document.getElementById('t-edit-id').value,data=document.getElementById('t-data').value,fid=parseInt(document.getElementById('t-func').value),setor=document.getElementById('t-setor').value,stat=document.getElementById('t-stat').value,inicio=document.getElementById('t-inicio').value,termino=document.getElementById('t-termino').value,desc=document.getElementById('t-desc').value.trim(),obs=document.getElementById('t-obs').value.trim();if(!data||!desc||!fid){alert('Preencha data, funcionario e descricao.');return;}var f=appDB.funcs.filter(function(f){return f.id===fid;})[0];salvarFS('tarefas',{id:editId?Number(editId):nid(),data:data,fid:fid,fnome:f?f.nome:'',setor:setor,desc:desc,stat:stat,inicio:inicio,termino:termino,obs:obs});fechaM('m-tarefa');}
 var vistaT='lista';
 function setVista(v){vistaT=v;document.getElementById('tv-lista').classList.toggle('active',v==='lista');document.getElementById('tv-kanban').classList.toggle('active',v==='kanban');renderTarefas();}
-function renderTarefas(){var fid=document.getElementById('ft-func').value,fst=document.getElementById('ft-stat').value;var lista=appDB.tarefas.filter(function(t){if(fid&&String(t.fid)!==fid)return false;if(fst&&t.stat!==fst)return false;return true;}).sort(function(a,b){return (b.data||'').localeCompare(a.data||'');});var el=document.getElementById('vista-tarefas');if(!lista.length){el.innerHTML='<div class="empty"><div class="ei">✅</div>Nenhuma tarefa</div>';return;}if(vistaT==='lista'){el.innerHTML='<div class="card"><div style="padding:0 16px">'+lista.map(function(t){var datas='';if(t.inicio||t.termino){datas='<div class="lsub" style="margin-top:2px">';if(t.inicio)datas+='Inicio: '+fmtD(t.inicio);if(t.inicio&&t.termino)datas+=' | ';if(t.termino)datas+='Termino: '+fmtD(t.termino);datas+='</div>';}return '<div class="lrow"><div class="lm"><div class="ltit">'+t.desc+'</div><div class="lsub">'+t.fnome+' - '+t.setor+' - '+fmtD(t.data)+'</div>'+datas+(t.obs?'<div class="lsub" style="font-style:italic;margin-top:2px">'+t.obs+'</div>':'')+'</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0"><select class="sst" onchange="mudaStat('+t.id+',this.value)"><option'+(t.stat==='Pendente'?' selected':'')+'>Pendente</option><option'+(t.stat==='Em andamento'?' selected':'')+'>Em andamento</option><option'+(t.stat==='Concluida'?' selected':'')+'>Concluida</option></select><button onclick="editarTarefa('+t.id+')" style="background:var(--bl);color:var(--b);font-size:12px;font-weight:700;padding:5px 10px;border-radius:20px;border:none;cursor:pointer">Editar</button><button class="bdel" onclick="deletarFS(\'tarefas\','+t.id+')">Excluir</button></div></div>';}).join('')+'</div></div>';}else{var cols=['Pendente','Em andamento','Concluida'],cores={'Pendente':'var(--a)','Em andamento':'var(--b)','Concluida':'var(--g2)'};el.innerHTML='<div class="kanban">'+cols.map(function(s){var cards=lista.filter(function(t){return t.stat===s;});return '<div class="kcol"><div class="kct" style="color:'+cores[s]+'">'+s+' ('+cards.length+')</div>'+(cards.map(function(t){var d='';if(t.inicio)d+='<div class="km">Inicio: '+fmtD(t.inicio)+'</div>';if(t.termino)d+='<div class="km">Termino: '+fmtD(t.termino)+'</div>';return '<div class="kcard"><div class="kct2">'+t.desc+'</div><div class="km">'+t.fnome+' - '+t.setor+'</div>'+d+(t.obs?'<div class="km" style="font-style:italic;margin-top:3px">'+t.obs+'</div>':'')+'<div style="margin-top:8px"><button onclick="editarTarefa('+t.id+')" style="background:var(--bl);color:var(--b);font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;border:none;cursor:pointer">Editar</button></div></div>';}).join('')||'<div style="color:var(--tx3);font-size:12px;text-align:center;padding:16px 0">Vazio</div>')+'</div>';}).join('')+'</div>';}}
+function renderTarefas(){var fid=document.getElementById('ft-func').value,fst=document.getElementById('ft-stat').value;var lista=appDB.tarefas.filter(function(t){if(fid&&String(t.fid)!==fid)return false;if(fst&&t.stat!==fst)return false;return true;}).sort(function(a,b){return (a.data||'').localeCompare(b.data||'');});var el=document.getElementById('vista-tarefas');if(!lista.length){el.innerHTML='<div class="empty"><div class="ei">✅</div>Nenhuma tarefa</div>';return;}if(vistaT==='lista'){el.innerHTML='<div class="card"><div style="padding:0 16px">'+lista.map(function(t){var datas='';if(t.inicio||t.termino){datas='<div class="lsub" style="margin-top:2px">';if(t.inicio)datas+='Inicio: '+fmtD(t.inicio);if(t.inicio&&t.termino)datas+=' | ';if(t.termino)datas+='Termino: '+fmtD(t.termino);datas+='</div>';}return '<div class="lrow"><div class="lm"><div class="ltit">'+t.desc+'</div><div class="lsub">'+t.fnome+' - '+t.setor+' - '+fmtD(t.data)+'</div>'+datas+(t.obs?'<div class="lsub" style="font-style:italic;margin-top:2px">'+t.obs+'</div>':'')+'</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0"><select class="sst" onchange="mudaStat('+t.id+',this.value)"><option'+(t.stat==='Pendente'?' selected':'')+'>Pendente</option><option'+(t.stat==='Em andamento'?' selected':'')+'>Em andamento</option><option'+(t.stat==='Concluida'?' selected':'')+'>Concluida</option></select><button onclick="editarTarefa('+t.id+')" style="background:var(--bl);color:var(--b);font-size:12px;font-weight:700;padding:5px 10px;border-radius:20px;border:none;cursor:pointer">Editar</button><button class="bdel" onclick="deletarFS(\'tarefas\','+t.id+')">Excluir</button></div></div>';}).join('')+'</div></div>';}else{var cols=['Pendente','Em andamento','Concluida'],cores={'Pendente':'var(--a)','Em andamento':'var(--b)','Concluida':'var(--g2)'};el.innerHTML='<div class="kanban">'+cols.map(function(s){var cards=lista.filter(function(t){return t.stat===s;});return '<div class="kcol"><div class="kct" style="color:'+cores[s]+'">'+s+' ('+cards.length+')</div>'+(cards.map(function(t){var d='';if(t.inicio)d+='<div class="km">Inicio: '+fmtD(t.inicio)+'</div>';if(t.termino)d+='<div class="km">Termino: '+fmtD(t.termino)+'</div>';return '<div class="kcard"><div class="kct2">'+t.desc+'</div><div class="km">'+t.fnome+' - '+t.setor+'</div>'+d+(t.obs?'<div class="km" style="font-style:italic;margin-top:3px">'+t.obs+'</div>':'')+'<div style="margin-top:8px"><button onclick="editarTarefa('+t.id+')" style="background:var(--bl);color:var(--b);font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;border:none;cursor:pointer">Editar</button></div></div>';}).join('')||'<div style="color:var(--tx3);font-size:12px;text-align:center;padding:16px 0">Vazio</div>')+'</div>';}).join('')+'</div>';}}
 function mudaStat(id,s){var t=appDB.tarefas.filter(function(t){return String(t.id)===String(id);})[0];if(t){t.stat=s;if(s==='Em andamento'&&!t.inicio)t.inicio=hoje();if(s==='Concluida'){if(!t.inicio)t.inicio=hoje();if(!t.termino)t.termino=hoje();}salvarFS('tarefas',t);}}
 
 function salvarPeca(){var data=document.getElementById('p-data').value,tipo=document.getElementById('p-tipo').value,desc=document.getElementById('p-desc').value.trim(),maq=document.getElementById('p-maq').value.trim(),val=parseFloat(document.getElementById('p-val').value)||0,forn=document.getElementById('p-forn').value.trim(),obs=document.getElementById('p-obs').value.trim();if(!data||!desc){alert('Preencha data e descricao.');return;}salvarFS('pecas',{id:nid(),data:data,tipo:tipo,desc:desc,maq:maq,val:val,forn:forn,obs:obs});['p-desc','p-maq','p-forn','p-obs'].forEach(function(i){document.getElementById(i).value='';});document.getElementById('p-val').value='';fechaM('m-peca');}
@@ -863,11 +894,106 @@ function importarBackup(input){
   reader.readAsText(file);
 }
 
+function salvarManut(){
+  var editId=document.getElementById('mn-edit-id').value;
+  var maq=document.getElementById('mn-maq').value.trim();
+  var tipo=document.getElementById('mn-tipo').value;
+  var data=document.getElementById('mn-data').value;
+  var prox=document.getElementById('mn-prox').value;
+  var hora=document.getElementById('mn-hora').value;
+  var custo=parseFloat(document.getElementById('mn-custo').value)||0;
+  var desc=document.getElementById('mn-desc').value.trim();
+  var lembrete=document.getElementById('mn-lembrete').value;
+  if(!maq||!data){alert('Preencha a maquina e a data.');return;}
+  var item={id:editId?Number(editId):nid(),maq:maq,tipo:tipo,data:data,proxData:prox,hora:hora,custo:custo,desc:desc,lembrete:lembrete,status:'Registrada'};
+  salvarFS('manutencoes',item);
+  fechaM('m-manut');
+  document.getElementById('mn-maq').value='';document.getElementById('mn-hora').value='';
+  document.getElementById('mn-custo').value='';document.getElementById('mn-desc').value='';
+  document.getElementById('mn-prox').value='';document.getElementById('mn-edit-id').value='';
+}
+
+function editarManut(id){
+  var m=(appDB.manutencoes||[]).filter(function(m){return String(m.id)===String(id);})[0];
+  if(!m)return;
+  document.getElementById('mn-edit-id').value=id;
+  document.getElementById('m-manut-titulo').textContent='Editar manutencao';
+  document.getElementById('mn-btn-salvar').textContent='Salvar alteracoes';
+  document.getElementById('mn-maq').value=m.maq||'';
+  document.getElementById('mn-tipo').value=m.tipo||'Troca de oleo';
+  document.getElementById('mn-data').value=m.data||'';
+  document.getElementById('mn-prox').value=m.proxData||'';
+  document.getElementById('mn-hora').value=m.hora||'';
+  document.getElementById('mn-custo').value=m.custo||'';
+  document.getElementById('mn-desc').value=m.desc||'';
+  document.getElementById('mn-lembrete').value=m.lembrete||'';
+  abreM('m-manut');
+}
+
+function renderManut(){
+  var lista=(appDB.manutencoes||[]).slice().sort(function(a,b){return (b.data||'').localeCompare(a.data||'');});
+  var h=hoje();
+  var em30=new Date();em30.setDate(em30.getDate()+30);var em30s=em30.toISOString().split('T')[0];
+
+  // Alertas de proximas manutencoes
+  var alertas=lista.filter(function(m){return m.proxData&&m.proxData<=em30s&&m.status!=='Concluida';});
+  var elA=document.getElementById('manut-alertas');
+  if(elA){
+    elA.innerHTML=alertas.map(function(m){
+      var venc=m.proxData<h;
+      var cor=venc?'var(--d)':'var(--a)';
+      var bg=venc?'var(--dl)':'var(--al)';
+      var brd=venc?'#d63031':'#f5c518';
+      var txt=venc?'VENCIDA':'Proxima em '+fmtD(m.proxData);
+      return '<div style="background:'+bg+';border:1.5px solid '+brd+';border-radius:12px;padding:12px 14px;margin-bottom:10px;display:flex;align-items:center;gap:10px">'+
+        '<span style="font-size:22px">🔔</span>'+
+        '<div><div style="font-size:13px;font-weight:700;color:'+cor+'">'+m.maq+' - '+m.tipo+'</div>'+
+        '<div style="font-size:12px;color:'+cor+'">'+txt+'</div></div>'+
+        '<button onclick="editarManut('+m.id+')" style="margin-left:auto;background:'+cor+';color:#fff;border:none;font-size:11px;font-weight:700;padding:5px 10px;border-radius:20px;cursor:pointer">Ver</button>'+
+      '</div>';
+    }).join('');
+  }
+
+  // Lista completa
+  var elL=document.getElementById('lista-manut');
+  if(!elL)return;
+  if(!lista.length){elL.innerHTML='<div class="empty"><div class="ei">🔩</div>Nenhuma manutencao registrada</div>';return;}
+
+  // Group by machine
+  var maqMap={};
+  lista.forEach(function(m){if(!maqMap[m.maq])maqMap[m.maq]=[];maqMap[m.maq].push(m);});
+
+  elL.innerHTML=Object.keys(maqMap).map(function(maq){
+    var itens=maqMap[maq];
+    var prox=itens.filter(function(m){return m.proxData;}).sort(function(a,b){return (a.proxData||'').localeCompare(b.proxData||'');})[0];
+    var proxTxt=prox?('<span style="color:'+(prox.proxData<h?'var(--d)':'var(--g2)')+'">Prox: '+fmtD(prox.proxData)+'</span>'):'';
+    return '<div style="margin-bottom:16px">'+
+      '<div style="font-size:13px;font-weight:800;color:var(--tx);padding:10px 0 6px;border-bottom:2px solid var(--br);display:flex;justify-content:space-between;align-items:center">'+
+        '<span>🚜 '+maq+'</span>'+proxTxt+
+      '</div>'+
+      itens.map(function(m){
+        return '<div class="lrow">'+
+          '<div class="lm">'+
+            '<div class="ltit">'+m.tipo+'</div>'+
+            '<div class="lsub">'+fmtD(m.data)+(m.hora?' - '+m.hora+' h':'')+(m.custo?' - '+fmtR(m.custo):'')+'</div>'+
+            (m.proxData?'<div class="lsub" style="color:'+(m.proxData<h?'var(--d)':'var(--g2)')+'">Proxima: '+fmtD(m.proxData)+'</div>':'')+
+            (m.desc?'<div class="lsub" style="font-style:italic;margin-top:2px">'+m.desc+'</div>':'')+
+          '</div>'+
+          '<div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end">'+
+            '<button onclick="editarManut('+m.id+')" style="background:var(--bl);color:var(--b);font-size:12px;font-weight:700;padding:5px 10px;border-radius:20px;border:none;cursor:pointer">Editar</button>'+
+            '<button class="bdel" onclick="deletarFS(\'manutencoes\','+m.id+')">Excluir</button>'+
+          '</div>'+
+        '</div>';
+      }).join('')+
+    '</div>';
+  }).join('');
+}
+
 function gerarIcone(){try{var c=document.createElement('canvas');c.width=512;c.height=512;var ctx=c.getContext('2d');var r=100;ctx.beginPath();ctx.moveTo(r,0);ctx.lineTo(512-r,0);ctx.quadraticCurveTo(512,0,512,r);ctx.lineTo(512,512-r);ctx.quadraticCurveTo(512,512,512-r,512);ctx.lineTo(r,512);ctx.quadraticCurveTo(0,512,0,512-r);ctx.lineTo(0,r);ctx.quadraticCurveTo(0,0,r,0);ctx.closePath();var g=ctx.createLinearGradient(0,0,512,512);g.addColorStop(0,'#3d8530');g.addColorStop(1,'#1a4015');ctx.fillStyle=g;ctx.fill();ctx.beginPath();ctx.arc(256,256,200,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,0.08)';ctx.fill();ctx.fillStyle='#ffffff';ctx.font='800 230px -apple-system,Arial,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('FT',256,270);ctx.fillStyle='rgba(255,255,255,0.25)';ctx.fillRect(106,390,300,7);var lnk=document.getElementById('pwa-icon');if(lnk)lnk.href=c.toDataURL('image/png');}catch(e){}}
 
 (function init(){
   var h=hoje(),p=h.slice(0,8)+'01';
-  ['c-data','u-data','p-data','pec-data','ch-data'].forEach(function(i){var el=document.getElementById(i);if(el)el.value=h;});
+  ['c-data','u-data','p-data','pec-data','ch-data','mn-data'].forEach(function(i){var el=document.getElementById(i);if(el)el.value=h;});
   document.getElementById('r-de').value=p;document.getElementById('r-ate').value=h;
   var k=localStorage.getItem('fazenda_gemini');
   if(k){var el=document.getElementById('api-key');if(el)el.value=k;var el2=document.getElementById('api-key-peca');if(el2)el2.value=k;}
