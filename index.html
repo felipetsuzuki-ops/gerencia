@@ -772,11 +772,19 @@ function gerarIcone(){try{var c=document.createElement('canvas');c.width=512;c.h
   // Mostra splash e carrega Firebase so depois que tela pintou
   setTimeout(function(){
     var s=document.getElementById('splash');
-    if(s){s.classList.add('hide');setTimeout(function(){if(s.parentNode)s.parentNode.removeChild(s);},400);}
-  },600);
+    if(s){s.classList.add('hide');setTimeout(function(){if(s.parentNode)s.parentNode.removeChild(s);},300);}
+  },400);
 
-  // Inicia Firebase REST (sem SDK pesado)
-  setTimeout(initFirebase, 200);
+  // Mostra login imediatamente se nao tem token valido salvo
+  var _savedToken = localStorage.getItem('fb_token');
+  var _savedExpiry = parseInt(localStorage.getItem('fb_expiry')||'0');
+  var _tokenOk = _savedToken && Date.now() < _savedExpiry - 60000;
+  if(!_tokenOk){
+    // Sem token valido - mostra login na hora sem esperar rede
+    document.getElementById('login-screen').classList.remove('hide');
+  }
+  // Inicia Firebase REST em background
+  setTimeout(initFirebase, 50);
 })();
 
 function initFirebase(){
