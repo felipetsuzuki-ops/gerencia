@@ -9,7 +9,6 @@
 <meta name="theme-color" content="#2a5c1f">
 <title>Assessor</title>
 <link id="pwa-icon" rel="apple-touch-icon">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <style>
 :root{--g:#2a5c1f;--g2:#3d8530;--gl:#e8f5e2;--t:#9b6031;--tl:#fdf0e5;--a:#c8920a;--al:#fff8e0;--d:#d63031;--dl:#ffeaea;--b:#1a5ec8;--bl:#e3f0ff;--p:#7c3aed;--pl:#f3f0ff;--bg:#f2f4f0;--card:#fff;--tx:#1a1f16;--tx2:#6b7566;--tx3:#a8b0a2;--br:#e0e5db;--st:env(safe-area-inset-top,44px);--sb:env(safe-area-inset-bottom,20px)}
@@ -701,12 +700,26 @@ function renderRel(){
 }
 
 function expXlsx(tipo){
+  if(typeof XLSX==='undefined'){
+    var s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload=function(){expXlsx(tipo);};
+    document.head.appendChild(s);
+    return;
+  }
   var wb=XLSX.utils.book_new();
   if(tipo==='compras'){XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(appDB.compras.map(function(c){return {'Data':fmtD(c.data),'Safra':c.safra||'','Cultura':c.cultura||'','Insumo':c.nome,'Categoria':c.cat,'Qtd':c.qtd,'Unid':c.un,'Valor Unit':c.val,'Total':parseFloat((c.qtd*c.val).toFixed(2)),'Fornecedor':c.forn};})),'Compras');XLSX.writeFile(wb,'compras.xlsx');}
   else if(tipo==='pecas'){XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(appDB.pecas.map(function(p){return {'Data':fmtD(p.data),'Tipo':p.tipo,'Descricao':p.desc,'Maquina':p.maq,'Valor':p.val,'Fornecedor':p.forn};})),'Pecas e MO');XLSX.writeFile(wb,'pecas_mo.xlsx');}
   else if(tipo==='pecuaria'){XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(appDB.pecuaria.map(function(p){return {'Data':fmtD(p.data),'Tipo':p.tipo,'ID':p.idAnimal||'','Sexo':p.sexo||'','Raca':p.raca||'','Mae':p.mae||'','Vacas':p.vacas||'','Bezerros':p.bezerros||'','Touros':p.touros||'','Obs':p.obs};})),'Pecuaria');XLSX.writeFile(wb,'pecuaria.xlsx');}
 }
 function expRelatorio(){
+  if(typeof XLSX==='undefined'){
+    var s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload=function(){expRelatorio();};
+    document.head.appendChild(s);
+    return;
+  }
   var wb=XLSX.utils.book_new();
   var comp=filtPer(appDB.compras,'data'),tar=filtPer(appDB.tarefas,'data');
   XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(comp.map(function(c){return {'Data':fmtD(c.data),'Safra':c.safra||'','Cultura':c.cultura||'','Insumo':c.nome,'Cat':c.cat,'Qtd':c.qtd,'Un':c.un,'Val':c.val,'Total':parseFloat((c.qtd*c.val).toFixed(2)),'Forn':c.forn};})),'Compras');
