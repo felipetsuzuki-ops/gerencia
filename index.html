@@ -750,7 +750,26 @@ function editarCompra(id){
 }
 
 function salvarCompra(){var data=document.getElementById('c-data').value,nome=document.getElementById('c-nome').value.trim(),cat=document.getElementById('c-cat').value,qtd=parseFloat(document.getElementById('c-qtd').value),un=document.getElementById('c-un').value,val=parseFloat(document.getElementById('c-val').value),forn=document.getElementById('c-forn').value.trim(),min=parseFloat(document.getElementById('c-min').value)||0,obs=document.getElementById('c-obs').value.trim(),safra=document.getElementById('c-safra').value,cultura=document.getElementById('c-cultura').value;if(!data||!nome||!cat||isNaN(qtd)||isNaN(val)){alert('Preencha: data, insumo, categoria, quantidade e valor.');return;}salvarFS('compras',{id:nid(),data:data,nome:nome,cat:cat,qtd:qtd,un:un,val:val,forn:forn,min:min,obs:obs,safra:safra,cultura:cultura});['c-nome','c-forn','c-obs'].forEach(function(i){document.getElementById(i).value='';});['c-qtd','c-val','c-min'].forEach(function(i){document.getElementById(i).value='';});document.getElementById('c-safra').value='';document.getElementById('c-cultura').value='';fechaM('m-compra');}
-function renderCompras(){var lista=appDB.compras.slice().sort(function(a,b){return (b.data||'').localeCompare(a.data||'');});var tot=lista.reduce(function(s,c){return s+c.qtd*c.val;},0);document.getElementById('compras-total').textContent='Total: '+fmtR(tot);document.getElementById('lista-compras').innerHTML=lista.length?lista.map(function(c){var ex='';if(c.safra||c.cultura)ex='<div class="lsub" style="margin-top:2px">'+(c.cultura||'')+((c.cultura&&c.safra)?' - ':'')+( c.safra||'')+'</div>';return '<div class="lrow"><div class="lm"><div class="ltit">'+c.nome+'</div><div class="lsub">'+c.cat+' - '+(c.forn||'--')+' - '+fmtD(c.data)+'</div>'+ex+'</div><div class="lr"><div class="lv">'+fmtR(c.qtd*c.val)+'</div><div class="lvs">'+c.qtd+' '+c.un+' x '+fmtR(c.val)+'</div><button class="bdel" style="margin-top:5px" onclick="deletarFS(\'compras\','+c.id+')">Excluir</button></div></div>';}).join(''):'<div class="empty"><div class="ei">🛒</div>Nenhuma compra</div>';}
+function renderCompras(){
+  var lista=appDB.compras.slice().sort(function(a,b){return (b.data||'').localeCompare(a.data||'');});
+  var tot=lista.reduce(function(s,c){return s+c.qtd*c.val;},0);
+  document.getElementById('compras-total').textContent='Total: '+fmtR(tot);
+  document.getElementById('lista-compras').innerHTML=lista.length?lista.map(function(c){
+    var ex='';
+    if(c.safra||c.cultura)ex='<div class="lsub" style="margin-top:2px">'+(c.cultura||'')+((c.cultura&&c.safra)?' - ':'')+( c.safra||'')+'</div>';
+    return '<div class="lrow"><div class="lm"><div class="ltit">'+c.nome+'</div><div class="lsub">'+c.cat+' - '+(c.forn||'--')+' - '+fmtD(c.data)+'</div>'+ex+'</div>'+
+      '<div class="lr">'+
+        '<div class="lv">'+fmtR(c.qtd*c.val)+'</div>'+
+        '<div class="lvs">'+c.qtd+' '+c.un+' x '+fmtR(c.val)+'</div>'+
+        '<div style="display:flex;gap:5px;margin-top:5px;justify-content:flex-end">'+
+          '<button onclick="editarCompra('+c.id+')" style="background:var(--bl);color:var(--b);font-size:12px;font-weight:700;padding:5px 10px;border-radius:20px;border:none;cursor:pointer">Editar</button>'+
+          '<button class="bdel" onclick="delCompra('+c.id+')">Excluir</button>'+
+        '</div>'+
+      '</div></div>';
+  }).join(''):'<div class="empty"><div class="ei">🛒</div>Nenhuma compra</div>';
+}
+
+function delCompra(id){deletarFS('compras',id);}
 
 function populaSelIns(){var est=estoque();document.getElementById('u-ins').innerHTML=est.map(function(e){return '<option value="'+e.nome+'">'+e.nome+' ('+e.saldo.toFixed(2)+' '+e.un+')</option>';}).join('');}
 function renderEst(){var est=estoque(),baixos=est.filter(function(e){return e.min>0&&e.saldo<=e.min;});document.getElementById('alerta-est').innerHTML=baixos.map(function(e){return '<div class="alrt">⚠️ <span><strong>'+e.nome+'</strong> - '+e.saldo.toFixed(2)+' '+e.un+' (min: '+e.min+')</span></div>';}).join('');document.getElementById('lista-est').innerHTML=est.length?est.map(function(e){var b=e.min>0&&e.saldo<=e.min;return '<div class="lrow"><div class="lm"><div class="ltit">'+e.nome+'</div><div class="lsub">'+e.cat+'</div></div><div class="lr"><div class="lv" style="color:'+(b?'var(--d)':'')+'">'+e.saldo.toFixed(2)+' '+e.un+'</div><span class="badge '+(b?'bb':'bok')+'">'+(b?'Baixo':'OK')+'</span></div></div>';}).join(''):'<div class="empty"><div class="ei">📦</div>Nenhum insumo</div>';}
